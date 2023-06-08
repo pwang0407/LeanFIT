@@ -1,42 +1,104 @@
-import React, { useState } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer } from 'recharts';
+import React, { useState, useEffect } from 'react';
+import { View, Dimensions, Text, StyleSheet } from 'react-native';
+import axios from 'axios';
+import DropDownPicker from 'react-native-dropdown-picker';
+import { LineChart } from "react-native-chart-kit";
+import { Bar } from 'react-native-pathjs-charts'
 
-const Graphs = ({ data }) => {
-  const [selectedExercise, setSelectedExercise] = useState('');
+const Graphs = () => {
+  const [exercises, setExercises] = useState([]);
+  const [workoutData, setWorkoutData] = useState([]);
+  const [selectedExercise, setSelectedExercise] = useState({});
+  const [open, setOpen] = useState(false);
 
-  // Extracting unique exercise names from the data
-  const exerciseOptions = [...new Set(data.map((entry) => entry.exercise))];
+  const screenWidth = Dimensions.get('window').width;
 
-  // Filter data based on the selected exercise
-  const filteredData = data.filter((entry) => entry.exercise === selectedExercise);
+  const handleExerciseChange = (exerciseId) => {
+    console.log('THIS IS SELECTED EXERCISE');
+    setSelectedExercise(exerciseId);
+  };
+
+  useEffect(() => {
+    if (selectedExercise === null) {
+      return;
+    }
+    axios
+      .get('http://localhost:3000/api/workouts')
+      .then((response) => {
+        console.log('this is response', response.data);
+        console.log('selectedExercise._id', selectedExercise);
+        const filteredWorkouts = response.data.filter((workout) => workout.exercise._id === selectedExercise);
+        setWorkoutData(filteredWorkouts);
+
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+  }, [selectedExercise]);
+  console.log('this is workoutData', workoutData);
+
+  useEffect(() => {
+    axios
+      .get('http://localhost:3000/api/exercises')
+      .then((response) => {
+        setExercises(response.data);
+
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+  }, []);
+
+  console.log('Workout Dates:');
+  workoutData.map((workout) => console.log(new Date(workout.date).toString()));
+
+  console.log('Workout Weights:');
+  workoutData.map((workout) =>
+    console.log(workout.weight !== null ? workout.weight.toString() : '0')
+  );
 
   return (
-    <div>
-      <select
+    <View style={styles.container}>
+      <DropDownPicker
+        placeholder="Select an exercise"
+        open={open}
         value={selectedExercise}
-        onChange={(e) => setSelectedExercise(e.target.value)}
-      >
-        <option value="">Select Exercise</option>
-        {exerciseOptions.map((exercise, index) => (
-          <option key={index} value={exercise}>
-            {exercise}
-          </option>
+        items={exercises.map((exercise) => ({
+          label: exercise.name,
+          value: exercise._id,
+        }))}
+        setOpen={setOpen}
+        setValue={setSelectedExercise}
+        setItems={setExercises}
+        style={styles.dropdown}
+      />
+      {workoutData.length === 0 ? (
+        <Text>No workout data available for the selected exercise.</Text>
+      ) : (
+            <View>
+        {workoutData.map((workout) => (
+          <Text >{new Date(workout.date).toString()}</Text>
         ))}
-      </select>
-      {selectedExercise && (
-        <ResponsiveContainer width="100%" height={400}>
-          <LineChart data={filteredData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" />
-            <YAxis />
-            <Legend />
-            <Line type="monotone" dataKey="weights" name="Weights" stroke="#8884d8" />
-            <Line type="monotone" dataKey="reps" name="Reps" stroke="#82ca9d" />
-          </LineChart>
-        </ResponsiveContainer>
+         {workoutData.map((workout) => (
+           <Text >
+           {workout.weight !== null ? workout.weight.toString() : '0'}
+         </Text>
+        ))}
+      </View>
       )}
-    </div>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dropdown: {
+    width: 200,
+  },
+});
 
 export default Graphs;
