@@ -2,15 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { View, Dimensions, Text, StyleSheet } from 'react-native';
 import axios from 'axios';
 import DropDownPicker from 'react-native-dropdown-picker';
-import { BarChart } from 'react-native-chart-kit';
 
 const Graphs = () => {
   const [exercises, setExercises] = useState([]);
   const [workoutData, setWorkoutData] = useState([]);
   const [selectedExercise, setSelectedExercise] = useState(null);
   const [open, setOpen] = useState(false);
-
-  const screenWidth = Dimensions.get('window').width;
 
   const handleExerciseChange = (exerciseId) => {
     setSelectedExercise(exerciseId);
@@ -23,9 +20,7 @@ const Graphs = () => {
     axios
       .get('http://localhost:3000/api/workouts')
       .then((response) => {
-        const filteredWorkouts = response.data.filter(
-          (workout) => workout.exercise._id === selectedExercise
-        );
+        const filteredWorkouts = response.data.filter((workout) => workout.exercise._id === selectedExercise);
         setWorkoutData(filteredWorkouts);
       })
       .catch((error) => {
@@ -44,8 +39,60 @@ const Graphs = () => {
       });
   }, []);
 
+  const screenWidth = Dimensions.get('window').width;
+
+  const renderGraph = () => {
+    if (workoutData.length === 0) {
+      return <Text>No workout data available for the selected exercise.</Text>;
+    }
+
+    // Sort workout data by date in ascending order
+    workoutData.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    // Extracting dates and weights from workout data
+    const dates = workoutData.map((workout) =>
+      new Date(workout.date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' })
+    );
+    const weights = workoutData.map((workout) => workout.weight || 0);
+
+    const maxWeight = Math.max(...weights);
+    const minWeight = Math.min(...weights);
+
+    const graphWidth = screenWidth - 40;
+    const barWidth = Math.min(20, graphWidth / workoutData.length);
+    const xScale = graphWidth / (workoutData.length - 1);
+    const yScale = 180 / (maxWeight - minWeight);
+
+    return (
+      <View style={styles.graphContainer}>
+        {workoutData.map((workout, index) => (
+          <View key={index} style={[styles.dataPoint, { left: index * xScale }]}>
+            <View
+              style={[
+                styles.bar,
+                {
+                  backgroundColor: 'blue',
+                  height: (workout.weight - minWeight) * yScale,
+                  width: barWidth,
+                },
+              ]}
+            />
+            <View style={styles.dateLabelContainer}>
+              <Text style={styles.dateLabel}>{dates[index]}</Text>
+            </View>
+            <Text style={styles.dataLabel}>{workout.weight || 0}</Text>
+          </View>
+        ))}
+      </View>
+    );
+  };
+
+
   return (
     <View style={styles.container}>
+      <View style={styles.headerContainer}>
+        <Text style={styles.headerText}>Graphs</Text>
+      </View>
       <DropDownPicker
         placeholder="Select an exercise"
         open={open}
@@ -59,36 +106,7 @@ const Graphs = () => {
         setItems={setExercises}
         style={styles.dropdown}
       />
-      {workoutData.length === 0 ? (
-        <Text>No workout data available for the selected exercise.</Text>
-      ) : (
-        <BarChart
-          data={{
-            labels: workoutData.map((workout) => new Date(workout.date).toString()),
-            datasets: [
-              {
-                data: workoutData.map((workout) =>
-                  workout.weight !== null ? workout.weight : 0
-                ),
-              },
-            ],
-          }}
-          width={screenWidth}
-          height={220}
-          yAxisLabel={'$'}
-          chartConfig={{
-            backgroundColor: '#e26a00',
-            backgroundGradientFrom: '#fb8c00',
-            backgroundGradientTo: '#ffa726',
-            decimalPlaces: 0,
-            color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-            style: {
-              borderRadius: 16,
-            },
-          }}
-          style={styles.chart}
-        />
-      )}
+      {renderGraph()}
     </View>
   );
 };
@@ -96,15 +114,55 @@ const Graphs = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    padding: 20,
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#2196F3',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    marginBottom: 10,
+    marginTop: 25,
+  },
+  headerText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFF',
+
   },
   dropdown: {
-    width: 200,
+    marginTop: 10,
+    marginBottom: 20,
   },
-  chart: {
-    marginVertical: 8,
-    borderRadius: 16,
+  graphContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    height: 200,
+    paddingHorizontal: 20,
+  },
+  dataPoint: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingBottom: 10,
+  },
+  bar: {
+    borderRadius: 5,
+  },
+  dateLabelContainer: {
+    transform: [{ rotate: '270deg' }],
+    marginLeft: -10,
+  },
+  dateLabel: {
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  dataLabel: {
+    marginTop: 5,
+    fontSize: 12,
+    textAlign: 'center',
   },
 });
 
