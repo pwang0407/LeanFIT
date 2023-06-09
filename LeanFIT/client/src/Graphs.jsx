@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Dimensions, Text, StyleSheet } from 'react-native';
 import axios from 'axios';
 import DropDownPicker from 'react-native-dropdown-picker';
-import { LineChart } from "react-native-chart-kit";
+import { LineChart } from "react-native-charts-wrapper";
 import { Bar } from 'react-native-pathjs-charts'
 
 const Graphs = () => {
@@ -75,18 +75,32 @@ const Graphs = () => {
       {workoutData.length === 0 ? (
         <Text>No workout data available for the selected exercise.</Text>
       ) : (
-            <View>
-        {workoutData.map((workout) => (
-          <Text >{new Date(workout.date).toString()}</Text>
-        ))}
-         {workoutData.map((workout) => (
-           <Text >
-           {workout.weight !== null ? workout.weight.toString() : '0'}
-         </Text>
-        ))}
-      </View>
-      )}
-    </View>
+        <LineChart
+        data={{
+          datasets: [
+            {
+              data: workoutData.map((workout) => ({
+                x: new Date(workout.date),
+                y: workout.weight !== null ? workout.weight : 0,
+              })),
+              color: (opacity = 1) => `rgba(0, 0, 255, ${opacity})`,
+            },
+          ],
+        }}
+        width={screenWidth}
+        height={200}
+        chartConfig={{
+          backgroundColor: '#ffffff',
+          backgroundGradientFrom: '#ffffff',
+          backgroundGradientTo: '#ffffff',
+          decimalPlaces: 0,
+          color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+        }}
+        bezier
+        style={styles.chart}
+      />
+    )}
+  </View>
   );
 };
 
